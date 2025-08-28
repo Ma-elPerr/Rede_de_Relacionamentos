@@ -930,26 +930,21 @@ gparam.AreaSelecaoRetangular = {
 	Setup:function() {
 		/*seleção retangular */
 		var multiSelectOverlay;
-		gparam.whichCTRLKey = 17;
-		if (gparam.macos) {
-		    {% if parametros.firefox %}
-				gparam.whichCTRLKey = 224;
-			{% else %}
-				gparam.whichCTRLKey = 91;
-			{% endif %}
-		}
 		document.addEventListener('keydown', function(e) {
-			if (e.which === gparam.whichCTRLKey && !multiSelectOverlay) { // ctrl key
+			// Inicia o modo de seleção retangular quando a tecla CTRL ou Command é pressionada
+			if ((e.key === 'Control' || e.key === 'Meta') && !multiSelectOverlay) {
 				multiSelectOverlay = gparam.AreaSelecaoRetangular.startMultiSelect(graph, gparam.renderer, gparam.layout);
 			}
-			if (e.which != gparam.whichCTRLKey && multiSelectOverlay) { // pressionou outro botão (corrige problema quando se pressiona CTRL+botão para outro comando, que o tipo de cursor não mudava para o padrão
+			// Se outra tecla for pressionada enquanto o modo de seleção estiver ativo, cancela o modo
+			// para evitar conflitos com outros atalhos (ex: CTRL+A)
+			else if (e.key !== 'Control' && e.key !== 'Meta' && multiSelectOverlay) {
 				multiSelectOverlay.destroy();
 				multiSelectOverlay = null;
 			}
-
 		});
 		document.addEventListener('keyup', function(e) {
-			if (e.which === 17 && multiSelectOverlay) {
+			// Cancela o modo de seleção quando a tecla CTRL ou Command é liberada
+			if ((e.key === 'Control' || e.key === 'Meta') && multiSelectOverlay) {
 				multiSelectOverlay.destroy();
 				multiSelectOverlay = null;
 			}
