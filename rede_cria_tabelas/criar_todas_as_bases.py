@@ -11,35 +11,26 @@ import time
 import os
 import sys
 import subprocess
-import pkg_resources
-
 # Garante que o diretório de trabalho seja o do script, para que os imports e caminhos relativos funcionem.
 script_dir = os.path.dirname(os.path.abspath(__file__))
 os.chdir(script_dir)
 
 def verificar_e_instalar_dependencias():
-    """Verifica se as dependências do requirements.txt estão instaladas e, se não, as instala."""
+    """Garante que as dependências do requirements.txt estejam instaladas."""
     requirements_path = os.path.join(os.path.dirname(__file__), 'requirements.txt')
     if not os.path.exists(requirements_path):
-        print(f"AVISO: 'requirements.txt' não encontrado. Pulando verificação de dependências.")
+        print(f"AVISO: 'requirements.txt' não encontrado. Pulando instalação de dependências.")
         return
 
+    print(f"Garantindo que as dependências de '{requirements_path}' estejam instaladas...")
     try:
-        print("Verificando dependências...")
-        # Lê o requirements.txt e verifica se cada uma está instalada
-        with open(requirements_path, 'r') as f:
-            requirements = [line.strip() for line in f if line.strip() and not line.startswith('#')]
-        pkg_resources.require(requirements)
-        print("Todas as dependências estão satisfeitas.")
-    except (pkg_resources.DistributionNotFound, pkg_resources.VersionConflict) as e:
-        print(f"Dependência faltando ou com versão incorreta encontrada: {e}")
-        print(f"Instalando dependências de '{requirements_path}'...")
-        try:
-            subprocess.check_call([sys.executable, '-m', 'pip', 'install', '-r', requirements_path])
-            print("Dependências instaladas com sucesso.")
-        except subprocess.CalledProcessError:
-            print("\nERRO: Falha ao instalar dependências. Verifique sua instalação do pip e a conexão com a internet.")
-            sys.exit(1)
+        # A forma mais robusta é simplesmente executar o pip install.
+        # Ele é idempotente e apenas confirmará se as dependências já estiverem satisfeitas.
+        subprocess.check_call([sys.executable, '-m', 'pip', 'install', '-r', requirements_path])
+        print("Dependências verificadas/instaladas com sucesso.")
+    except subprocess.CalledProcessError:
+        print("\nERRO: Falha ao instalar dependências. Verifique sua instalação do pip e a conexão com a internet.")
+        sys.exit(1)
 
 # Importa as funções dos scripts refatorados
 try:
