@@ -11,9 +11,19 @@ import time
 import os
 import sys
 import subprocess
-# Garante que o diretório de trabalho seja o do script, para que os imports e caminhos relativos funcionem.
-script_dir = os.path.dirname(os.path.abspath(__file__))
-os.chdir(script_dir)
+# Bloco para garantir compatibilidade quando executado como script ou como app PyInstaller
+if getattr(sys, 'frozen', False) and hasattr(sys, '_MEIPASS'):
+    # Se estiver rodando como um bundle do PyInstaller
+    script_dir = sys._MEIPASS
+    os.chdir(script_dir)
+else:
+    # Se estiver rodando como um script .py normal
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    os.chdir(script_dir)
+
+# Adiciona o diretório do script ao sys.path para garantir que os imports funcionem
+if script_dir not in sys.path:
+    sys.path.insert(0, script_dir)
 
 def verificar_e_instalar_dependencias():
     """Garante que as dependências do requirements.txt estejam instaladas."""
