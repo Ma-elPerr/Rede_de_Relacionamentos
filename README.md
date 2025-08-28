@@ -34,19 +34,25 @@ A pasta contém os arquivos <b>rede_teste.db</b> e <b>cnpj_teste.db</b>, que sã
 
 ## Como utilizar o Banco de dados completo de CNPJs com a versão em Python:
 
-A pasta <b>rede_cria_tabelas</b> contém os scripts para baixar os arquivos zip do site de Dados Abertos, gerar a base completa de empresas e as tabelas utilizadas na redeCNPJ.<br>
-a) para baixar os arquivos zip do site de Dados Abertos, rode o comando:<br>
-<b>python dados_cnpj_baixa.py</b><br>
-b) para criar a base de empresas <b>cnpj.db</b>, rode o comando:<br>
-<b>python dados_cnpj_para_sqlite.py</b><br>
-c) para criar a tabela de vínculos <b>rede.db</b> utilizada na redeCNPJ, rode o comando:<br>
-<b>python rede_cria_tabela_rede.db.py</b><br>
-d) para criar a tabela de vínculos <b>cnpj_links_ete.db</b> de endereços, de emails e de telefones utilizada na redeCNPJ, rode o comando:<br>
-<b>python rede_cria_tabela_cnpj_links_ete.py</b><br>
+A pasta <b>rede_cria_tabelas</b> contém os scripts para baixar os arquivos zip do site de Dados Abertos, gerar a base completa de empresas e as tabelas utilizadas na redeCNPJ.
+
+Para criar todas as bases de dados de forma automatizada, navegue até a pasta `rede_cria_tabelas` e execute o script mestre com o seguinte comando:
+<b>python criar_todas_as_bases.py</b><br>
 <br>
-Ao final, mova os arquivos cnpj.db, rede.db, rede_search.db, cnpj_links_ete.db da pasta <b>rede_cria_tabelas/dados-publicos</b> para a <b>rede/bases</b>. Os arquivos restantes nas pastas dados-publicos e dados-publicos-zip poderão ser apagados.<br>
+Este comando irá executar todas as etapas necessárias em sequência: download, descompactação e criação de todos os bancos de dados. O processo pode levar várias horas.
+
+O script aceita os seguintes argumentos opcionais:
+<ul>
+    <li><code>--force-delete</code>: Força a exclusão de arquivos e bancos de dados existentes antes de iniciar um novo processo. Use com cuidado.</li>
+    <li><code>--skip-download</code>: Pula a etapa de download. Útil se você já baixou os arquivos <code>.zip</code> e os colocou na pasta <code>rede_cria_tabelas/dados-publicos-zip</code>.</li>
+    <li><code>--skip-links-ete</code>: Pula a criação da base de dados opcional de links por endereço, telefone e e-mail (<code>cnpj_links_ete.db</code>).</li>
+</ul>
+<b>Exemplo de uso:</b> Para recriar as bases de dados (exceto a de links) sem baixar os arquivos novamente:
 <br>
-Observação: O cnpj_links_ete.db é opcional, somente se quiser visualizar vinculos por endereços, telefones ou email em comum.<br>
+<code>python criar_todas_as_bases.py --force-delete --skip-download --skip-links-ete</code>
+<br>
+<br>
+Ao final do processo, mova os arquivos <code>.db</code> gerados na pasta <code>rede_cria_tabelas/dados-publicos</code> para a pasta <code>rede/bases</code>. Os arquivos restantes nas pastas <code>dados-publicos</code> e <code>dados-publicos-zip</code> poderão ser apagados.<br>
 Veja o projeto https://github.com/rictom/cnpj-sqlite para ver informações sobre o código para baixar os arquivos com dados abertos e converter para sqlite.<br>
 
 O código foi ajustado para o formato disponibilizado pela Receita Federal a partir de 2021, testado em agosto de 2024.<br> 
