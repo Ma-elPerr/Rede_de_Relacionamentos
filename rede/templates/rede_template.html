@@ -84,6 +84,12 @@ var gparam = {};
 	gparam.termoBuscaGoogle = '';
 	//gparam.itensFlag = ['situacao_fiscal', 'pep', 'ceis', 'cepim', 'cnep', 'acordo_leniência', 'ceaf', 'pgfn-fgts', 'pgfn-sida','pgfn-prev'];
 	gparam.itensFlag = gparam.inicio.itensFlag; //['situacao_fiscal', 'pep', 'ceis', 'cepim', 'cnep', 'acordo_leniência', 'ceaf', 'pgfn-fgts', 'pgfn-sida','pgfn-prev'];
+	if (!gparam.itensFlag.includes('cnep')) {
+		gparam.itensFlag.push('cnep');
+	}
+    if (!gparam.itensFlag.includes('correcional')) {
+        gparam.itensFlag.push('correcional');
+    }
 	gparam.embaralhaRotulo = false;
 	gparam.abaFilha = null;
 	gparam.usuarioLocal = window.location.href.startsWith('http://127.0.0.1');
@@ -548,6 +554,12 @@ graphics.node(function(node) {
 			.attr('height', gparam.nodeSize)
 			.attr('visibility', 'visible');  //hidden or visible
 	
+	if (node.data.cnep || node.data.ceis) {
+		rectCor.attr('stroke', 'red').attr('stroke-width', 2);
+	} else if (node.data.correcional) {
+        rectCor.attr('stroke', 'yellow').attr('stroke-width', 2);
+    }
+
 	let	rect = Viva.Graph.svg('rect') //destacar se está selecionado
 			.attr('visibility', 'hidden') //hidden or visible	
 			.attr('stroke', 'black') //'crimson'

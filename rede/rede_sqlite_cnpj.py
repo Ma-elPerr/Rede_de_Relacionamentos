@@ -14,41 +14,51 @@ import sys, os, time, copy, re, string, unicodedata, collections, json, secrets,
 from functools import lru_cache
 import pandas as pd, sqlalchemy, sqlite3
 #from fnmatch import fnmatch 
-import util_cpf_cnpj as cpf_cnpj
+from . import util_cpf_cnpj as cpf_cnpj
 
-import rede_config as config
+from . import rede_config as config
 
-caminhoDBReceita = config.config['BASE']['base_receita'].strip()
-caminhoDBRede = config.config['BASE']['base_rede'].strip()
-caminhoDBRedeSearch = config.config['BASE'].get('base_rede_search', caminhoDBRede).strip()
-caminhoDBEnderecoNormalizado = config.config['BASE'].get('base_endereco_normalizado', '').strip()
-caminhoDBLinks = config.config['BASE'].get('base_links', '').strip()
-caminhoDBBaseLocal =  config.config['BASE'].get('base_local', '').strip()
+# These will be populated by initialize_paths()
+caminhoDBReceita = ''
+caminhoDBRede = ''
+caminhoDBRedeSearch = ''
+caminhoDBEnderecoNormalizado = ''
+caminhoDBLinks = ''
+caminhoDBBaseLocal = ''
+gdic = None
 
-if not caminhoDBReceita: #se não houver db da receita, carrega um template para evitar erros nas consultas
-    caminhoDBReceita = 'base_cnpj_vazia.db'
+def initialize_paths():
+    global caminhoDBReceita, caminhoDBRede, caminhoDBRedeSearch, caminhoDBEnderecoNormalizado, caminhoDBLinks, caminhoDBBaseLocal
+    global ligacaoSocioFilial, kLimiteCamada, kTempoMaxConsulta
 
-# if not caminhoDBRede or not os.path.isfile(caminhoDBRede) or not caminhoDBReceita or not os.path.isfile(caminhoDBReceita):
-#     sys.exit('Arquivo base cnpj.db ou base rede.db não foi localizado. Veja o caminho da base no arquivo de configuracao rede.ini está correto. Devem existir as tabelas rede.db e cnpj.db. O arquivo rede.db é criado com o script rede_cria_tabela.db.')
+    caminhoDBReceita = config.config['BASE']['base_receita'].strip()
+    caminhoDBRede = config.config['BASE']['base_rede'].strip()
+    caminhoDBRedeSearch = config.config['BASE'].get('base_rede_search', caminhoDBRede).strip()
+    caminhoDBEnderecoNormalizado = config.config['BASE'].get('base_endereco_normalizado', '').strip()
+    caminhoDBLinks = config.config['BASE'].get('base_links', '').strip()
+    caminhoDBBaseLocal =  config.config['BASE'].get('base_local', '').strip()
+    if not caminhoDBReceita: #se não houver db da receita, carrega um template para evitar erros nas consultas
+        caminhoDBReceita = 'base_cnpj_vazia.db'
 
-#checagem de arquivos (erro comum)
-for cam in [caminhoDBReceita, caminhoDBRede, caminhoDBRedeSearch, caminhoDBEnderecoNormalizado, caminhoDBLinks, caminhoDBBaseLocal]:
-    if not cam:
-        continue
-    if not os.path.isfile(cam):
-        print(f'O arquivo {cam} não foi localizado. Verifique se este arquivo existe. Talvez o parâmetro no arquivo de configuracao rede.ini estaja incorreto. Veja as orientações para instalação da redecnpj.')
-        resp = input('Pressione Enter')
-        sys.exit('Erro.')
-#.for
+    ligacaoSocioFilial = config.config['ETC'].getboolean('ligacao_socio_filial',False) #registra cnpjs consultados
+    kLimiteCamada = config.config['ETC'].getint('limite_registros_camada', 1000)
+    kTempoMaxConsulta = config.config['ETC'].getfloat('tempo_maximo_consulta', 10) #em segundos
 
-ligacaoSocioFilial = config.config['ETC'].getboolean('ligacao_socio_filial',False) #registra cnpjs consultados
-kLimiteCamada = config.config['ETC'].getint('limite_registros_camada', 1000)
-kTempoMaxConsulta = config.config['ETC'].getfloat('tempo_maximo_consulta', 10) #em segundos
+def check_database_files():
+    # This check will only run when explicitly called
+    for cam in [caminhoDBReceita, caminhoDBRede, caminhoDBRedeSearch, caminhoDBEnderecoNormalizado, caminhoDBLinks, caminhoDBBaseLocal]:
+        if not cam:
+            continue
+        if not os.path.isfile(cam):
+            print(f'O arquivo {cam} não foi localizado. Verifique se este arquivo existe. Talvez o parâmetro no arquivo de configuracao rede.ini estaja incorreto. Veja as orientações para instalação da redecnpj.')
+            resp = input('Pressione Enter')
+            sys.exit('Erro.')
 
 class DicionariosCodigosCNPJ():
     def __init__(self):
         if not caminhoDBReceita:
             return
+        print(f"DEBUG: Connecting to database at: {caminhoDBReceita}")
         con = sqlite3.connect(f'file:{caminhoDBReceita}?mode=ro', uri=True) #não é possível usar o sqlite3 com pd.read_sql_table
         dfaux = pd.read_sql('select * from qualificacao_socio', con, index_col=None )
         self.dicQualificacao_socio = pd.Series(dfaux.descricao.values,index=dfaux.codigo).to_dict()
@@ -63,12 +73,10 @@ class DicionariosCodigosCNPJ():
         self.dicPorteEmpresa = {'00':'Não informado', '01':'Micro empresa', '03':'Empresa de pequeno porte', '05':'Demais (Médio ou Grande porte)'}
         con = None
 
-#.class DicionariosCodigosCNPJ():        
-gdic = DicionariosCodigosCNPJ()
+def initialize_global_dics():
+    global gdic
+    gdic = DicionariosCodigosCNPJ()
 
-#dfaux=None
-
-#gTableIndex = 0
 kCaractereSeparadorLimite = '@'
 
 #decorator para medir tempo de execução de função
@@ -990,6 +998,7 @@ def camadasRede_json(con, tmp, camadasIds, mensagem,  bCaminhos=False):
 
     #dadosDosNosCNPJs(cnpjs=cnpjs, nosaux=nosaux, camadasIds=camadasIds, tmp=tmp, con=con)
     dadosDosNosCNPJs(nosaux=nosaux, camadasIds=camadasIds, tmp=tmp, con=con, dicGrupo=dicGrupo)
+    dadosDosNosPessoasFisicas(nosaux, camadasIds, tmp, con)
     dadosDosNosBaseLocal(nosaux, camadasIds, tmp=tmp, con=con)
     nosaux=ajustaLabelIcone(nosaux)
     if bCaminhos: #adiciona no json tabela de achados
@@ -1017,6 +1026,68 @@ def dadosDosNosBaseLocal(nosInOut, camadasIds, tmp=None, con=None):
     nosInOut = nosaux
 #.def dadosDosNosBaseLocal
          
+def dadosDosNosPessoasFisicas(nosaux, camadasIds, tmp, con):
+    """Enriquece os nós de Pessoa Física (PF_) com dados de sanções do 'dados_externos.db'."""
+    caminhoDBExternos = os.path.join(os.path.dirname(caminhoDBReceita), 'dados_externos.db')
+    if not os.path.exists(caminhoDBExternos):
+        return
+
+    try:
+        con.execute(f"ATTACH DATABASE '{caminhoDBExternos.replace('\\','/')}' as dados_externos")
+        cur = con.cursor()
+        # Verifica se a tabela correcionais existe
+        cur.execute("SELECT name FROM dados_externos.sqlite_master WHERE type='table' AND name='correcionais';")
+        if not cur.fetchone():
+            con.execute("DETACH DATABASE dados_externos")
+            return
+
+        # Extrai CPFs dos IDs de PF
+        query_pf_ids = f"SELECT identificador, substr(identificador, 4, 11) as cpf FROM {tmp}_ids WHERE substr(identificador, 1, 3) = 'PF_'"
+        df_pf_ids = pd.read_sql_query(query_pf_ids, con)
+
+        if df_pf_ids.empty:
+            con.execute("DETACH DATABASE dados_externos")
+            return
+
+        # Cria uma tabela temporária com os CPFs a serem consultados
+        df_pf_ids[['cpf']].to_sql(f'{tmp}_cpfs', con, if_exists='replace', index=False)
+
+        # Faz o JOIN com a tabela de sanções
+        query_sancoes = f"""
+            SELECT t.cpf, s.sancao, s.orgao, s.data_inicio, s.data_final
+            FROM {tmp}_cpfs t
+            JOIN dados_externos.correcionais s ON t.cpf = s.cpf
+        """
+        df_sancoes = pd.read_sql_query(query_sancoes, con)
+
+        if df_sancoes.empty:
+            con.execute("DETACH DATABASE dados_externos")
+            return
+
+        # Cria um dicionário para busca rápida das sanções por CPF
+        sancoes_por_cpf = {}
+        for index, row in df_sancoes.iterrows():
+            sancao_info = f"Sancao: {row['sancao']}; Orgao: {row['orgao']}; Inicio: {ajustaData(row['data_inicio'])}; Fim: {ajustaData(row['data_final'])}"
+            if row['cpf'] not in sancoes_por_cpf:
+                sancoes_por_cpf[row['cpf']] = []
+            sancoes_por_cpf[row['cpf']].append(sancao_info)
+
+        # Atualiza a lista nosaux com os dados das sanções
+        for no in nosaux:
+            if no['id'].startswith('PF_'):
+                cpf = no['id'][3:14]
+                if cpf in sancoes_por_cpf:
+                    no['correcional'] = " | ".join(sancoes_por_cpf[cpf])
+
+        con.execute("DETACH DATABASE dados_externos")
+
+    except Exception as e:
+        print(f"Erro ao processar dados correcionais: {e}")
+        try:
+            con.execute("DETACH DATABASE dados_externos")
+        except:
+            pass
+
 #@timeit
 #def dadosDosNosCNPJs(cnpjs, nosaux, camadasIds, tmp, con):
 def dadosDosNosCNPJs(nosaux, camadasIds, tmp, con, dicGrupo=None):
@@ -1332,6 +1403,10 @@ def jsonDados(cpfcnpjListain:list, bsocios=False):
 def jsonDadosReceita(cnpjlista, bsocios=False):
     '''dados'''
     
+    # Adiciona o caminho para a base de dados externos
+    caminhoDBExternos = os.path.join(os.path.dirname(caminhoDBReceita), 'dados_externos.db')
+    b_tem_dados_externos = os.path.exists(caminhoDBExternos)
+
     if bsocios:
         querySocios = '''
             SELECT t.cnpj, t.cnpj_cpf_socio, t.nome_socio, sq.descricao as cod_qualificacao, 
@@ -1353,14 +1428,36 @@ def jsonDadosReceita(cnpjlista, bsocios=False):
         querySocios+= ' ORDER BY tt.cnpj, t.nome_socio '
         ##curioso, se fizer só um select ordenando por t.cnpj, t.nome_socio a consulta fica muito lenta
         ##prestar atenção no query plan, que altera quando tem um fica diferente quanto tem mais elementos
-    query = '''
-        select t.*, te.*, ifnull(tm.descricao,t.nome_cidade_exterior) as municipio_texto, tpais.descricao as pais_, tsimples.opcao_mei
+
+    b_tem_ceis = False
+    # Adiciona a coluna do CNEP no select e o JOIN se a base existir
+    coluna_cnep_select = ", c.sancao as cnep_sancao, c.orgao as cnep_orgao, c.data_inicio as cnep_data_inicio, c.data_final as cnep_data_final" if b_tem_dados_externos else ""
+    join_cnep = f"LEFT JOIN dados_externos.cnep c ON t.cnpj = c.cnpj" if b_tem_dados_externos else ""
+
+    coluna_ceis_select = ""
+    join_ceis = ""
+
+    con = sqlite3.connect(caminhoDBReceita, uri=True)
+    if b_tem_dados_externos:
+        con.execute(f"ATTACH DATABASE '{caminhoDBExternos.replace('\\','/')}' as dados_externos")
+        # Verifica se a tabela CEIS existe
+        cur = con.cursor()
+        cur.execute("SELECT name FROM dados_externos.sqlite_master WHERE type='table' AND name='ceis';")
+        if cur.fetchone():
+            b_tem_ceis = True
+            coluna_ceis_select = ", s.sancao as ceis_sancao, s.orgao as ceis_orgao, s.data_inicio as ceis_data_inicio, s.data_final as ceis_data_final"
+            join_ceis = f"LEFT JOIN dados_externos.ceis s ON t.cnpj = s.cnpj"
+
+    query = f'''
+        select t.*, te.*, ifnull(tm.descricao,t.nome_cidade_exterior) as municipio_texto, tpais.descricao as pais_, tsimples.opcao_mei {coluna_cnep_select} {coluna_ceis_select}
         from estabelecimento t
         
         left join empresas te on te.cnpj_basico=t.cnpj_basico
         left join municipio tm on tm.codigo=t.municipio
         left join simples tsimples on tsimples.cnpj_basico=t.cnpj_basico
         left join pais tpais on tpais.codigo=t.pais
+        {join_cnep}
+        {join_ceis}
         where ''' 
     if len(cnpjlista)==1:
         query += 't.cnpj=?'
@@ -1370,10 +1467,9 @@ def jsonDadosReceita(cnpjlista, bsocios=False):
     camposPJ = ['cnpj', 'matriz_filial', 'razao_social', 'nome_fantasia', 'data_inicio_atividades', 'situacao_cadastral', 
 				'data_situacao_cadastral', 'motivo_situacao_cadastral', 'natureza_juridica', 'cnae_fiscal', 'cnae_secundaria', 'porte_empresa', 'opcao_mei',
 				'endereco', 'municipio', 'uf', 'cep', 'nm_cidade_exterior', 'nome_pais', 'nm_cidade_exterior', 'pais',
-				'ddd1', 'telefone1', 'ddd2', 'telefone2', 'ddd_fax', 'fax', 'correio_eletronico', 'capital_social'
+				'ddd1', 'telefone1', 'ddd2', 'telefone2', 'ddd_fax', 'fax', 'correio_eletronico', 'capital_social', 'cnep', 'ceis'
 				]
-    
-    con = sqlite3.connect(caminhoDBReceita, uri=True)    
+
     con.row_factory=sqlite3.Row
     cur = con.cursor()    
     
@@ -1424,6 +1520,14 @@ def jsonDadosReceita(cnpjlista, bsocios=False):
         if k['uf']=='EX':
             d['municipio'] = k['bairro']
             d['pais'] = k['pais_']
+
+        if b_tem_dados_externos:
+            # sqlite3.Row objects don't have a .get() method. Check for key existence.
+            if 'cnep_sancao' in k.keys() and k['cnep_sancao']:
+                d['cnep'] = f"Sancao: {k['cnep_sancao']}; Orgao: {k['cnep_orgao']}; Inicio: {ajustaData(k['cnep_data_inicio'])}; Fim: {ajustaData(k['cnep_data_final'])}"
+            if b_tem_ceis and 'ceis_sancao' in k.keys() and k['ceis_sancao']:
+                d['ceis'] = f"Sancao: {k['ceis_sancao']}; Orgao: {k['ceis_orgao']}; Inicio: {ajustaData(k['ceis_data_inicio'])}; Fim: {ajustaData(k['ceis_data_final'])}"
+
         d = {k:v for k,v in d.items() if k in camposPJ}
         d['id'] = 'PJ_'+ d['cnpj']
         d['cnpj_formatado'] = f"{d['cnpj'][:2]}.{d['cnpj'][2:5]}.{d['cnpj'][5:8]}/{d['cnpj'][8:12]}-{d['cnpj'][12:]}"
@@ -1444,7 +1548,7 @@ def jsonDadosReceita(cnpjlista, bsocios=False):
     #print('jsonDados-fim: ' + time.ctime())   
     # if proximo==-1:
     #     da['proximo_cnpj'] = cnpjin
-    con = None
+    con.close()
     return dlista
 #.def jsonDadosReceita
 

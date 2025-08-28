@@ -29,14 +29,20 @@ A aplicação é construída sobre uma arquitetura cliente-servidor clássica, c
         *   `rede.db`: Uma base pré-processada contendo as ligações diretas entre as entidades (nós), otimizada para a construção do grafo.
         *   `rede_search.db`: Contém um índice de busca em texto completo para permitir pesquisas rápidas por nome de empresa ou sócio.
     *   **Módulo de Acesso:** A interação com o banco de dados é centralizada no módulo `rede/rede_sqlite_cnpj.py`.
+*   **Bancos de Dados Externos:** A arquitetura suporta a integração de bancos de dados adicionais (ex: `dados_externos.db`) para enriquecer os dados principais com informações de outras fontes. Atualmente, são utilizadas fontes da Controladoria-Geral da União (CGU):
+    *   **CNEP e CEIS:** Listas de sanções aplicadas a **empresas**.
+    *   **Dados Correcionais:** Lista de sanções aplicadas a **pessoas físicas**.
 
 O fluxo de comunicação funciona da seguinte maneira:
 - O usuário acessa a URL principal.
 - O **Backend (Flask)** serve a página `rede_template.html` para o navegador.
 - O **Frontend (JavaScript)**, ao carregar, pode fazer uma requisição inicial à API do backend para buscar os dados de um CNPJ específico ou carregar um grafo salvo.
 - Quando o usuário interage com o grafo (ex: dando um duplo-clique em um nó), o **Frontend** envia uma requisição `fetch` para uma rota específica da API no **Backend**.
-- O **Backend** recebe a requisição, utiliza o módulo `rede_sqlite_cnpj.py` para consultar o **Banco de Dados** SQLite, processa os resultados e os retorna para o **Frontend** em formato JSON.
-- O **Frontend** recebe o JSON e utiliza o `VivaGraphJS` para adicionar os novos nós e ligações ao grafo, atualizando a visualização para o usuário.
+- O **Backend** recebe a requisição, utiliza o módulo `rede_sqlite_cnpj.py` para consultar o **Banco de Dados** SQLite. Ele pode anexar (`ATTACH`) o banco `dados_externos.db` e fazer um `LEFT JOIN` para verificar se uma empresa (PJ) ou pessoa (PF) consta nas tabelas de sanções (`cnep`, `ceis`, `correcionais`). O backend então processa os resultados e os retorna para o **Frontend** em formato JSON.
+- O **Frontend** recebe o JSON e utiliza o `VivaGraphJS` para adicionar os novos nós e ligações ao grafo. Se um nó vier com um marcador de sanção, o frontend aplica uma estilização diferente:
+    - **Borda Vermelha:** Para empresas (`PJ_...`) com sanções nos cadastros CNEP ou CEIS.
+    - **Borda Amarela:** Para pessoas físicas (`PF_...`) com sanções no cadastro de Dados Correcionais.
+- Além disso, ao passar o mouse sobre um nó sancionado, o **tooltip** exibirá os detalhes da sanção correspondente.
 
 ## 3. O Backend (Servidor Flask - `rede.py`)
 
