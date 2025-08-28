@@ -11,6 +11,31 @@ import time
 import os
 import sys
 import subprocess
+import pkg_resources
+
+def verificar_e_instalar_dependencias():
+    """Verifica se as dependências do requirements.txt estão instaladas e, se não, as instala."""
+    requirements_path = os.path.join(os.path.dirname(__file__), 'requirements.txt')
+    if not os.path.exists(requirements_path):
+        print(f"AVISO: 'requirements.txt' não encontrado. Pulando verificação de dependências.")
+        return
+
+    try:
+        print("Verificando dependências...")
+        # Lê o requirements.txt e verifica se cada uma está instalada
+        with open(requirements_path, 'r') as f:
+            requirements = [line.strip() for line in f if line.strip() and not line.startswith('#')]
+        pkg_resources.require(requirements)
+        print("Todas as dependências estão satisfeitas.")
+    except (pkg_resources.DistributionNotFound, pkg_resources.VersionConflict) as e:
+        print(f"Dependência faltando ou com versão incorreta encontrada: {e}")
+        print(f"Instalando dependências de '{requirements_path}'...")
+        try:
+            subprocess.check_call([sys.executable, '-m', 'pip', 'install', '-r', requirements_path])
+            print("Dependências instaladas com sucesso.")
+        except subprocess.CalledProcessError:
+            print("\nERRO: Falha ao instalar dependências. Verifique sua instalação do pip e a conexão com a internet.")
+            sys.exit(1)
 
 # Importa as funções dos scripts refatorados
 try:
@@ -69,6 +94,8 @@ def run_script_as_subprocess(script_name, force_delete):
 
 
 def main():
+    verificar_e_instalar_dependencias()
+
     parser = argparse.ArgumentParser(description="Script mestre para criar as bases de dados da RedeCNPJ.")
     parser.add_argument(
         '--force-delete',

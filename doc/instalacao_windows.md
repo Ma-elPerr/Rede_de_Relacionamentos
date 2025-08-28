@@ -3,6 +3,18 @@
 ## TUTORIAL:
 Instalação passo-a-passo no Windows (versão 1/6/2023):<br> 
 
+### Como Executar um Arquivo Python (.py)
+
+Para executar os scripts Python deste projeto (arquivos que terminam em `.py`), você precisará usar uma interface de linha de comando, como o **Prompt de Comando (cmd.exe)** ou o **PowerShell** do Windows.
+
+1.  **Abra o Terminal:** Você pode abrir o Prompt de Comando pesquisando por `cmd` no Menu Iniciar.
+2.  **Navegue até a Pasta do Projeto:** Use o comando `cd` (Change Directory) para navegar até a pasta onde você descompactou o projeto. Por exemplo, se você descompactou na sua pasta de Downloads, o comando seria algo como:
+    `cd C:\Users\SeuUsuario\Downloads\rede-cnpj-master`
+3.  **Execute o Script:** Uma vez na pasta correta, você pode executar um script digitando `python` seguido do nome do arquivo. Por exemplo:
+    `python nome_do_script.py`
+
+**Importante:** Para que isso funcione, o Python (versão 3.9 a 3.12) deve estar instalado em seu sistema e a opção "Add Python to PATH" deve ter sido marcada durante a instalação. O guia abaixo recomenda o uso do **Anaconda**, que já configura um ambiente com tudo o que é necessário.
+
 - Instale o Anaconda, no link https://www.anaconda.com/<br>
 ![image](https://user-images.githubusercontent.com/71139693/179334927-750cff12-88ce-4102-b004-05a9f005c470.png)
 
@@ -45,19 +57,17 @@ para executar a rede-cnpj<br>
  - Para parar, pressione CTRL+C no console. 
  
   
- ## USAR A BASE COMPLETA DE CNPJS: <br>
- - As instruções para gerar a base completa de CNPJs estão na página https://github.com/rictom/cnpj-sqlite, mas para facilitar o uso, o código foi replicado na neste projeto.<br>
- - Posicione o console na pasta rede_cria_tabelas. Use cd .. ou cd rede_cria_tabelas .<br>
- - A pasta rede_cria_tabelas contém os scripts para baixar os arquivos zip do site de Dados Abertos, gerar a base completa de empresas e as tabelas utilizadas na redeCNPJ.<br>
- - a) para baixar os arquivos zip do site de Dados Abertos, rode o comando <b>python dados_cnpj_baixa.py</b> . Após o processo, deverá haver 37 arquivos .zip na pasta dados-publicos-zip. <br>
- - b) para criar a base de empresas cnpj.db, rode o comando <b>python dados_cnpj_para_sqlite.py</b> . Isso irá criar um arquivo cnpj.db na pasta dados-publicos em torno de 30GB.<br>
- - c) para criar a tabela de vínculos, execute o comando <b>python rede_cria_tabela_rede.db.py</b> . Ao final, deverá haver os arquivos rede.db e rede_search.db na pasta dados-publicos.<br>
- - d) para criar a tabela de vínculos de endereços, rode o comando <b>python rede_cria_tabela_cnpj_links_ete.py</b> . Isto irá gerar o arquivo cnpj_links_ete.db.<br>
-
+## USAR A BASE COMPLETA DE CNPJS: <br>
+ - Para gerar a base completa de CNPJs, o processo foi simplificado para um único script.
+ - No console, navegue até a pasta `rede_cria_tabelas`. Se você estiver na pasta principal (`rede-cnpj-master`), digite: `cd rede_cria_tabelas`
+ - Execute o script mestre com o comando:
+   <b>python criar_todas_as_bases.py</b>
+ - Este comando executará todas as etapas necessárias. O script irá primeiro verificar e instalar as dependências, depois baixar os dados e, finalmente, construir os bancos de dados. Este processo pode levar várias horas e irá pedir sua confirmação para prosseguir.
+ - Para mais opções, como pular o download, use o comando de ajuda: `python criar_todas_as_bases.py --help`
 <br>
- - Depois de seguir as orientações a) até d), mova os arquivos cnpj.db, rede.db, rede_search.db, cnpj_links_ete.db da pasta <b>rede_cria_tabelas/dados-publicos</b> para a <b>rede/bases</b>. Os arquivos restantes dentro das pastas dados-publicos e dados-publicos-zip poderão ser apagados.<br>
+ - Depois de executar o script, mova os arquivos <code>.db</code> gerados na pasta <b>rede_cria_tabelas/dados-publicos</b> para a <b>rede/bases</b>. Os arquivos restantes dentro das pastas dados-publicos e dados-publicos-zip poderão ser apagados.<br>
 <br>
- - Observação: O cnpj_links_ete.db é opcional, somente se quiser visualizar vinculos por endereços, telefones ou email em comum.<br>
+ - Observação: A criação da base <code>cnpj_links_ete.db</code> é opcional e pode ser pulada com o argumento <code>--skip-links-ete</code>.<br>
 
  - Para uso na redeCNPJ, os arquivos podem ser posicionados em outros locais, alterando-se o arquivo o rede.ini no Bloco de Notas. Por exemplo, se quiser colocar em um disco externo, faça algo como:<br>
 <b>base_rede=D:/arquivos_grandes/rede.db</b><br>
