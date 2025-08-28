@@ -13,6 +13,10 @@ import sys
 import subprocess
 import pkg_resources
 
+# Garante que o diretório de trabalho seja o do script, para que os imports e caminhos relativos funcionem.
+script_dir = os.path.dirname(os.path.abspath(__file__))
+os.chdir(script_dir)
+
 def verificar_e_instalar_dependencias():
     """Verifica se as dependências do requirements.txt estão instaladas e, se não, as instala."""
     requirements_path = os.path.join(os.path.dirname(__file__), 'requirements.txt')
